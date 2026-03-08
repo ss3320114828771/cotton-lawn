@@ -6,10 +6,11 @@ import { verifyToken } from '@/lib/auth'
 // GET /api/products/[id] - Get single product by ID
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    // Await the params to ensure they're resolved
+    const { id } = await params
 
     if (!id) {
       return NextResponse.json(
@@ -47,10 +48,10 @@ export async function GET(
 // PUT /api/products/[id] - Update product (Admin only)
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
 
     // Check authentication
     const cookieStore = await cookies()
@@ -134,10 +135,10 @@ export async function PUT(
 // DELETE /api/products/[id] - Delete product (Admin only)
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
 
     // Check authentication
     const cookieStore = await cookies()
@@ -222,10 +223,10 @@ export async function DELETE(
 // PATCH /api/products/[id] - Partially update product (Admin only)
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
 
     // Check authentication
     const cookieStore = await cookies()
