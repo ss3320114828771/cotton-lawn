@@ -3,6 +3,11 @@ import { prisma } from '@/lib/prisma'
 import { cookies } from 'next/headers'
 import { verifyToken } from '@/lib/auth'
 
+// Define type for category result
+interface CategoryResult {
+  category: string
+}
+
 // GET /api/products - Get all products with optional filtering
 export async function GET(request: Request) {
   try {
@@ -77,7 +82,8 @@ export async function GET(request: Request) {
         pages: Math.ceil(total / limit)
       },
       filters: {
-        categories: categories.map(c => c.category)
+        // FIXED: Added explicit type
+        categories: categories.map((c: CategoryResult) => c.category)
       }
     })
 
