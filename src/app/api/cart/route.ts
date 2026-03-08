@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
+
+// In-memory cart storage (temporary, will reset on server restart)
+const carts: any = {}
 
 // GET /api/cart - Get user's cart
 export async function GET() {
@@ -24,23 +26,18 @@ export async function GET() {
       )
     }
 
-    // Find or create user's cart
-    let cart = await prisma.cart.findUnique({
-      where: { userId: payload.id }
-    })
-
-    if (!cart) {
-      cart = await prisma.cart.create({
-        data: {
-          userId: payload.id,
-          items: []
-        }
-      })
+    // Get or create cart from memory
+    if (!carts[payload.id]) {
+      carts[payload.id] = {
+        id: `cart_${payload.id}`,
+        userId: payload.id,
+        items: []
+      }
     }
 
     return NextResponse.json({
       success: true,
-      cart: cart
+      cart: carts[payload.id]
     })
 
   } catch (error) {
@@ -82,10 +79,17 @@ export async function POST(request: Request) {
       )
     }
 
-    // Check if product exists
-    const product = await prisma.product.findUnique({
-      where: { id: productId }
-    })
+    // Dummy products data
+    const dummyProducts: any = {
+      '1': { id: '1', name: 'Premium Cotton Suit', price: 89.99, image: '/n1.jpeg', stock: 15 },
+      '2': { id: '2', name: 'Luxury Lawn Suit', price: 129.99, image: '/n2.jpeg', stock: 10 },
+      '3': { id: '3', name: 'Designer Cotton Suit', price: 99.99, image: '/n3.jpeg', stock: 20 },
+      '4': { id: '4', name: 'Premium Lawn Suit', price: 149.99, image: '/n4.jpeg', stock: 8 },
+      '5': { id: '5', name: 'Casual Cotton Suit', price: 79.99, image: '/n5.jpeg', stock: 25 },
+      '6': { id: '6', name: 'Festival Lawn Suit', price: 199.99, image: '/n6.jpeg', stock: 5 }
+    }
+
+    const product = dummyProducts[productId]
 
     if (!product) {
       return NextResponse.json(
@@ -94,29 +98,17 @@ export async function POST(request: Request) {
       )
     }
 
-    if (product.stock < quantity) {
-      return NextResponse.json(
-        { error: 'Insufficient stock' },
-        { status: 400 }
-      )
-    }
-
     // Get or create cart
-    let cart = await prisma.cart.findUnique({
-      where: { userId: payload.id }
-    })
-
-    if (!cart) {
-      cart = await prisma.cart.create({
-        data: {
-          userId: payload.id,
-          items: []
-        }
-      })
+    if (!carts[payload.id]) {
+      carts[payload.id] = {
+        id: `cart_${payload.id}`,
+        userId: payload.id,
+        items: []
+      }
     }
 
-    // Parse current items
-    const currentItems = (cart.items as any[]) || []
+    const cart = carts[payload.id]
+    const currentItems = cart.items || []
     
     // Check if product already in cart
     const existingItemIndex = currentItems.findIndex(
@@ -137,18 +129,12 @@ export async function POST(request: Request) {
       })
     }
 
-    // Update cart
-    const updatedCart = await prisma.cart.update({
-      where: { userId: payload.id },
-      data: {
-        items: currentItems
-      }
-    })
+    cart.items = currentItems
 
     return NextResponse.json({
       success: true,
       message: 'Item added to cart',
-      cart: updatedCart
+      cart: cart
     })
 
   } catch (error) {
@@ -198,10 +184,7 @@ export async function PUT(request: Request) {
     }
 
     // Get cart
-    const cart = await prisma.cart.findUnique({
-      where: { userId: payload.id }
-    })
-
+    const cart = carts[payload.id]
     if (!cart) {
       return NextResponse.json(
         { error: 'Cart not found' },
@@ -209,26 +192,18 @@ export async function PUT(request: Request) {
       )
     }
 
-    // Parse current items
-    const currentItems = (cart.items as any[]) || []
+    const currentItems = cart.items || []
     
     if (quantity === 0) {
       // Remove item
-      const updatedItems = currentItems.filter(
+      cart.items = currentItems.filter(
         (item: any) => item.productId !== productId
       )
-      
-      const updatedCart = await prisma.cart.update({
-        where: { userId: payload.id },
-        data: {
-          items: updatedItems
-        }
-      })
 
       return NextResponse.json({
         success: true,
         message: 'Item removed from cart',
-        cart: updatedCart
+        cart: cart
       })
     } else {
       // Update quantity
@@ -238,18 +213,12 @@ export async function PUT(request: Request) {
 
       if (itemIndex >= 0) {
         currentItems[itemIndex].quantity = quantity
+        cart.items = currentItems
         
-        const updatedCart = await prisma.cart.update({
-          where: { userId: payload.id },
-          data: {
-            items: currentItems
-          }
-        })
-
         return NextResponse.json({
           success: true,
           message: 'Cart updated',
-          cart: updatedCart
+          cart: cart
         })
       } else {
         return NextResponse.json(
@@ -294,10 +263,7 @@ export async function DELETE(request: Request) {
     const clearAll = searchParams.get('clearAll') === 'true'
 
     // Get cart
-    const cart = await prisma.cart.findUnique({
-      where: { userId: payload.id }
-    })
-
+    const cart = carts[payload.id]
     if (!cart) {
       return NextResponse.json(
         { error: 'Cart not found' },
@@ -307,17 +273,11 @@ export async function DELETE(request: Request) {
 
     if (clearAll) {
       // Clear entire cart
-      const updatedCart = await prisma.cart.update({
-        where: { userId: payload.id },
-        data: {
-          items: []
-        }
-      })
-
+      cart.items = []
       return NextResponse.json({
         success: true,
         message: 'Cart cleared',
-        cart: updatedCart
+        cart: cart
       })
     }
 
@@ -329,22 +289,14 @@ export async function DELETE(request: Request) {
     }
 
     // Remove specific item
-    const currentItems = (cart.items as any[]) || []
-    const updatedItems = currentItems.filter(
+    cart.items = (cart.items || []).filter(
       (item: any) => item.productId !== productId
     )
-
-    const updatedCart = await prisma.cart.update({
-      where: { userId: payload.id },
-      data: {
-        items: updatedItems
-      }
-    })
 
     return NextResponse.json({
       success: true,
       message: 'Item removed from cart',
-      cart: updatedCart
+      cart: cart
     })
 
   } catch (error) {

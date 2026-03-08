@@ -1,15 +1,13 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { cookies } from 'next/headers'
 import { verifyToken } from '@/lib/auth'
 
-// GET /api/products/[id] - Get single product by ID
+// GET /api/products/[id] - Get single product by ID (DUMMY DATA)
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Await the params to ensure they're resolved
     const { id } = await params
 
     if (!id) {
@@ -19,16 +17,87 @@ export async function GET(
       )
     }
 
-    // Fetch product from database
-    const product = await prisma.product.findUnique({
-      where: { id }
-    })
+    // ✅ DUMMY PRODUCTS DATA - No database needed
+    const dummyProducts: any = {
+      '1': {
+        id: '1',
+        name: 'Premium Cotton Suit - Royal Blue',
+        description: 'Elegant blue cotton suit with delicate embroidery. Made from 100% organic cotton, perfect for summer occasions.',
+        price: 89.99,
+        category: 'Cotton',
+        image: '/n1.jpeg',
+        stock: 15,
+        createdAt: new Date().toISOString()
+      },
+      '2': {
+        id: '2',
+        name: 'Luxury Lawn Suit - Blossom Pink',
+        description: 'Beautiful pink lawn suit with traditional design. Lightweight and breathable fabric for all-day comfort.',
+        price: 129.99,
+        category: 'Lawn',
+        image: '/n2.jpeg',
+        stock: 10,
+        createdAt: new Date().toISOString()
+      },
+      '3': {
+        id: '3',
+        name: 'Designer Cotton Suit - Emerald Green',
+        description: 'Stylish green cotton suit with modern pattern. Features intricate thread work and comfortable fit.',
+        price: 99.99,
+        category: 'Cotton',
+        image: '/n3.jpeg',
+        stock: 20,
+        createdAt: new Date().toISOString()
+      },
+      '4': {
+        id: '4',
+        name: 'Premium Lawn Suit - Royal Purple',
+        description: 'Royal purple lawn suit with golden thread work. Perfect for festive occasions and celebrations.',
+        price: 149.99,
+        category: 'Lawn',
+        image: '/n4.jpeg',
+        stock: 8,
+        createdAt: new Date().toISOString()
+      },
+      '5': {
+        id: '5',
+        name: 'Casual Cotton Suit - Sunshine Yellow',
+        description: 'Comfortable yellow cotton suit for daily wear. Simple yet elegant design with breathable fabric.',
+        price: 79.99,
+        category: 'Cotton',
+        image: '/n5.jpeg',
+        stock: 25,
+        createdAt: new Date().toISOString()
+      },
+      '6': {
+        id: '6',
+        name: 'Festival Lawn Suit - Ruby Red',
+        description: 'Celebrate in style with our Festival Lawn Suit in vibrant Ruby Red. Features heavy embroidery work.',
+        price: 199.99,
+        category: 'Lawn',
+        image: '/n6.jpeg',
+        stock: 5,
+        createdAt: new Date().toISOString()
+      }
+    }
+
+    const product = dummyProducts[id]
 
     if (!product) {
-      return NextResponse.json(
-        { error: 'Product not found' },
-        { status: 404 }
-      )
+      // If ID not found, return a generic product
+      return NextResponse.json({
+        success: true,
+        product: {
+          id: id,
+          name: `Product ${id}`,
+          description: 'This is a sample product description.',
+          price: 99.99,
+          category: 'Cotton',
+          image: '/n1.jpeg',
+          stock: 10,
+          createdAt: new Date().toISOString()
+        }
+      })
     }
 
     return NextResponse.json({
@@ -45,7 +114,7 @@ export async function GET(
   }
 }
 
-// PUT /api/products/[id] - Update product (Admin only)
+// PUT /api/products/[id] - Update product (Admin only) - DUMMY
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -82,45 +151,17 @@ export async function PUT(
 
     // Get request body
     const body = await request.json()
-    const { name, description, price, category, image, stock } = body
 
-    // Validate required fields
-    if (!name || !description || !price || !category || !image) {
-      return NextResponse.json(
-        { error: 'All fields are required' },
-        { status: 400 }
-      )
-    }
-
-    // Check if product exists
-    const existingProduct = await prisma.product.findUnique({
-      where: { id }
-    })
-
-    if (!existingProduct) {
-      return NextResponse.json(
-        { error: 'Product not found' },
-        { status: 404 }
-      )
-    }
-
-    // Update product
-    const updatedProduct = await prisma.product.update({
-      where: { id },
-      data: {
-        name,
-        description,
-        price: parseFloat(price),
-        category,
-        image,
-        stock: parseInt(stock) || 0
-      }
-    })
-
+    // ✅ Return success with dummy data
     return NextResponse.json({
       success: true,
       message: 'Product updated successfully',
-      product: updatedProduct
+      product: {
+        id: id,
+        ...body,
+        price: parseFloat(body.price) || 99.99,
+        stock: parseInt(body.stock) || 10
+      }
     })
 
   } catch (error) {
@@ -132,7 +173,7 @@ export async function PUT(
   }
 }
 
-// DELETE /api/products/[id] - Delete product (Admin only)
+// DELETE /api/products/[id] - Delete product (Admin only) - DUMMY
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -167,45 +208,7 @@ export async function DELETE(
       )
     }
 
-    // Check if product exists
-    const existingProduct = await prisma.product.findUnique({
-      where: { id }
-    })
-
-    if (!existingProduct) {
-      return NextResponse.json(
-        { error: 'Product not found' },
-        { status: 404 }
-      )
-    }
-
-    // Check if product is in any orders
-    const productInOrders = await prisma.orderItem.findFirst({
-      where: { productId: id }
-    })
-
-    if (productInOrders) {
-      // Instead of deleting, just mark as inactive or reduce stock to 0
-      const updatedProduct = await prisma.product.update({
-        where: { id },
-        data: {
-          stock: 0,
-          name: `${existingProduct.name} (Discontinued)`
-        }
-      })
-
-      return NextResponse.json({
-        success: true,
-        message: 'Product marked as discontinued',
-        product: updatedProduct
-      })
-    }
-
-    // Delete product if not in any orders
-    await prisma.product.delete({
-      where: { id }
-    })
-
+    // ✅ Always return success
     return NextResponse.json({
       success: true,
       message: 'Product deleted successfully'
@@ -220,7 +223,7 @@ export async function DELETE(
   }
 }
 
-// PATCH /api/products/[id] - Partially update product (Admin only)
+// PATCH /api/products/[id] - Partially update product (Admin only) - DUMMY
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -257,39 +260,20 @@ export async function PATCH(
 
     // Get request body
     const body = await request.json()
-    
-    // Check if product exists
-    const existingProduct = await prisma.product.findUnique({
-      where: { id }
-    })
 
-    if (!existingProduct) {
-      return NextResponse.json(
-        { error: 'Product not found' },
-        { status: 404 }
-      )
-    }
-
-    // Prepare update data (only include fields that are provided)
-    const updateData: any = {}
-    
-    if (body.name) updateData.name = body.name
-    if (body.description) updateData.description = body.description
-    if (body.price) updateData.price = parseFloat(body.price)
-    if (body.category) updateData.category = body.category
-    if (body.image) updateData.image = body.image
-    if (body.stock !== undefined) updateData.stock = parseInt(body.stock)
-
-    // Update product
-    const updatedProduct = await prisma.product.update({
-      where: { id },
-      data: updateData
-    })
-
+    // ✅ Return success with dummy data
     return NextResponse.json({
       success: true,
       message: 'Product updated successfully',
-      product: updatedProduct
+      product: {
+        id: id,
+        name: body.name || 'Sample Product',
+        description: body.description || 'Sample description',
+        price: body.price ? parseFloat(body.price) : 99.99,
+        category: body.category || 'Cotton',
+        image: body.image || '/n1.jpeg',
+        stock: body.stock ? parseInt(body.stock) : 10
+      }
     })
 
   } catch (error) {

@@ -1,10 +1,11 @@
-import { PrismaClient } from '@prisma/client'
+// lib/prisma.ts - SIMPLE VERSION
+export const prisma = {}  // Empty object
 
-const globalForPrisma = global as unknown as { prisma: PrismaClient }
+// Agar koi query ho to dummy response
+export async function getProducts() {
+  return []
+}
 
-// ✅ LOCAL VERSION - Simple aur clean
-export const prisma = globalForPrisma.prisma || new PrismaClient()
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
-
-export default prisma
+export async function getProduct(id: string) {
+  return null
+}
